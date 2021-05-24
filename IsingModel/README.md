@@ -16,3 +16,4 @@ We use the this [package](https://github.com/WolframResearch/WolframLanguageForJ
 - Navigate into the repo and run:
     `./configure-jupyter.wls add`
 
+To get help with the Wolfram Language, see the [documentation](https://reference.wolfram.com/language/).
