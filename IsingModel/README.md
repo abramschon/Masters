@@ -9,7 +9,7 @@ We first determine these variables analytically using Mathematica for a small nu
 We then determine the variables computationally.
 
 ## Wolfram Language in Jupyter
-We use the this [package](https://github.com/WolframResearch/WolframLanguageForJupyter) to allow us to use the Wolfram Language in Jupyter. In short:
+We use this [package](https://github.com/WolframResearch/WolframLanguageForJupyter) to allow us to use the Wolfram Language in Jupyter. In short:
 - Clone the repo
 
     `git clone https://github.com/WolframResearch/WolframLanguageForJupyter.git`
