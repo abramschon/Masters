@@ -1,0 +1,2 @@
+# Population Count and Independent Model 
+Here, we model the joint probability distribution over a set of binary neurons using 2 different simplistic models. We consider the maximum entropy distribution that reproduces the *probability that K cells spike*, the population count model, and distribution that reproduces the *mean probability of neurons spiking*, the independent model. 
