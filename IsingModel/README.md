@@ -4,9 +4,9 @@ We create an Ising ('Ee-zing') model that models the joint probability distribut
 
 The challenge is determining the variables `h` (a vector), `J` (a matrix) such that the Ising model produces statistics consistent with the observed statistics.  
 
-We first determine these variables analytically using Mathematica for a small number of neurons. It should become apparent that analytical solutions are computationally unfeasible for large numbers of neurons. 
-
-We then determine the variables computationally.
+Below, I briefly explain what is in each notebooks:
+- `AnalyticIsing.ipynb` -  Implementation of Ising model that analytically solves for `h` and `J`, written in the Wolfram language
+- `NumericIsing.ipynb` - Computationally solves for `h` and `J`, written in Python. Currently uses an inefficient maximum likelihood method that sums over all states. 
 
 ## Wolfram Language in Jupyter
 We use the this [package](https://github.com/WolframResearch/WolframLanguageForJupyter) to allow us to use the Wolfram Language in Jupyter. In short:
