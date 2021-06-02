@@ -9,7 +9,7 @@ Below, I briefly explain what is in each notebooks:
 - `NumericIsing.ipynb` - Computationally solves for `h` and `J`, written in Python. Currently uses an inefficient maximum likelihood method that sums over all states. 
 
 ## Wolfram Language in Jupyter
-We use the this [package](https://github.com/WolframResearch/WolframLanguageForJupyter) to allow us to use the Wolfram Language in Jupyter. In short:
+We use this [package](https://github.com/WolframResearch/WolframLanguageForJupyter) to allow us to use the Wolfram Language in Jupyter. In short:
 - Clone the repo
 
     `git clone https://github.com/WolframResearch/WolframLanguageForJupyter.git`
