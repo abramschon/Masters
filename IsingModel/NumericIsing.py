@@ -124,7 +124,7 @@ class Ising:
         Performs gradient ascent on the log-likelihood and updates h and J
         """
         steps = 100
-        for n in range(steps): #update this condition to check accuracy
+        for _ in range(steps): #update this condition to check accuracy
             # work out corrections to h
             h_new = self.h
             for i in range(self.N):
