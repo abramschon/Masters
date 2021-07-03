@@ -1,2 +1,4 @@
 # Population Count and Independent Model 
 Here, we model the joint probability distribution over a set of binary neurons using 2 different simplistic models. We consider the maximum entropy distribution that reproduces the *probability that K cells spike*, the population count model, and distribution that reproduces the *mean probability of neurons spiking*, the independent model. 
+
+In the `Notebooks` directory, we have the Jupyter notebook `CoarseModels.ipynb` which implements both models analytically in the Wolfram language. See the `README.md` in the `IsingModel` directory for more details on using te Wolfram language in Jupyter. 
