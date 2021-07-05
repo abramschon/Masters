@@ -1,42 +1,46 @@
 import numpy as np
 
 def main():
-    N = 3
-    avgs = 0.5*np.ones(N) # prob of every neuron firing in a window is 0.5
-    corrs = 0.2*np.triu(np.ones((N,N)),1) # prob of 2 neurons firing in the same window is 0.2 
-    ising = Ising(N, avgs, corrs, lr=0.5) 
-    ising.gradient_ascent() # 100 steps 
-    pred_avgs = ising.averages()
-    pred_corrs = ising.correlations()
-    print("Predicted averages:", pred_avgs, "Predicted correlations:", pred_corrs,sep="\n")
-    
+    N = 4
+    h = np.random.random_sample((N))
+    J = np.triu( np.random.random_sample((N,N)), 1)
+    K = np.zeros((N,N,N))
 
-class Ising:
+    alpha = 1
+    for i in range(N-2):
+        for j in range(i+1,N-1):
+            for k in range(j+1, N):
+                K[i,j,k] = alpha 
+                alpha /= 10
+    ex = ThreeWise(N, h, J, K)
+    
+    #calc 3 wise correlations
+    for i in range(N-2):
+        for j in range(i+1,N-1):
+            for k in range(j+1, N):
+                print(f"Correlation between {i},{j},{k}\n",ex.expectation(lambda s: s[0]*s[1]*s[2], [i,j,k], ex.p))
+
+class ThreeWise:
     """
-    Represents an Ising model.
+    Represents a Boltzman distribution with 3-wise interactions.
     Variables:
         N - no. spins
-        av_s - vector of expectations for each spin
-        av_ss - matrix of pairwise correlations
-        lr - learning rate
+        h - vector of the local magnetic fields 
+        J - matrix of the pairwise interactions 
+        K - tensor of the 3-wise interactions
         spin_vals - the values each spin takes on, typically [0,1] or [-1,1]
         states - matrix of all possible states
-        h - vector of the local magnetic fields 
-        J - matrix of the pairwise couplings 
         Z - the current value of the partition function
     """
-    def __init__(self, N, avgs, corrs, lr=0.1, spin_vals=[0,1]):
+    def __init__(self, N, h, J, K, spin_vals=[0,1]):
         # set user input
         self.N = N
-        self.avgs = avgs
-        self.corrs = corrs
-        self.lr = lr
+        self.h = h
+        self.J = J
+        self.K = K
         self.spin_vals = spin_vals
         # determine all states
         self.states = np.array([self.to_binary(n) for n in range(2**N)]) 
-        # randomly initialise h and J
-        self.h = np.random.random_sample((N))
-        self.J = np.triu( np.random.random_sample((N,N)), 1)
         # work out the partition function Z
         self.Z = self.calc_Z()
     
@@ -96,7 +100,7 @@ class Ising:
         Args:
             s - np.array of the state
         """
-        return -self.h.dot(s) - s@self.J@s 
+        return -self.h@s - self.J@s@s - self.K@s@s@s
             
     def calc_Z(self):
         """ 
@@ -116,31 +120,6 @@ class Ising:
             n//=2
             if n==0: break
         return b
-
-    # Methods for gradient ascent
-    def gradient_ascent(self):
-        """
-        Performs gradient ascent on the log-likelihood and updates h and J
-        """
-        steps = 100
-        for _ in range(steps): #update this condition to check accuracy
-            # work out corrections to h
-            h_new = self.h
-            for i in range(self.N):
-                dLdhi = self.avgs[i] - self.expectation( lambda s: s[0], [i], self.p )
-                h_new[i] += self.lr * dLdhi 
-
-            # work out corrections to J
-            J_new = self.J
-            for i in range(self.N-1):
-                for j in range(i+1,self.N):
-                    dLdJij = self.corrs[i,j] - self.expectation( lambda s: s[0]*s[1], [i,j], self.p )
-                    J_new[i,j] += self.lr * dLdJij 
-
-            # perform the update
-            self.h = h_new
-            self.J = J_new
-            self.Z = self.calc_Z()
     
 if __name__ == "__main__":
     main()
