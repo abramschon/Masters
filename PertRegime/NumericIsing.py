@@ -1,7 +1,9 @@
 import numpy as np
+import matplotlib.pyplot as plt
+import time
 
 def main():
-    N = 10
+    N = 5
     avgs = 0.5*np.ones(N) # prob of every neuron firing in a window is 0.5
     corrs = 0.2*np.triu(np.ones((N,N)),1) # prob of 2 neurons firing in the same window is 0.2 
     print("Init model")
@@ -13,6 +15,32 @@ def main():
     pred_corrs = ising.correlations()
     print("Predicted averages:", pred_avgs, "Predicted correlations:", pred_corrs,sep="\n")
     print(f"P({ising.states[0]})={ising.p(ising.states[0])}")
+
+    # Calculate average times
+    reps = 10
+    Ns = np.arange(1,13)
+    times = np.zeros( (reps,len(Ns)) )
+    for i in range(reps):
+        for N in Ns:
+            print(N)
+            avgs = 0.5*np.ones(N) # prob of every neuron firing in a window is 0.5
+            corrs = 0.2*np.triu(np.ones((N,N)),1) # prob of 2 neurons firing in the same window is 0.2 
+            ising = Ising(N, avgs, corrs, lr=0.5) 
+            start = time.time()
+            ising.gradient_ascent() # 100 steps 
+            stop = time.time()
+            times[i,N-1]=stop-start
+    
+    av_times = np.mean(times,0)
+    std_times = np.std(times,0)
+
+    plt.plot(Ns, av_times, "k.")
+    plt.plot(Ns, av_times+2*std_times/np.sqrt(reps), "r_")
+    plt.plot(Ns, av_times-2*std_times/np.sqrt(reps), "r_")
+    plt.title("Time for 100 steps of grad. ascent vs. system size")
+    plt.xlabel("System size")
+    plt.ylabel("Time (seconds)")
+    plt.show()
 
 class Ising:
     """
