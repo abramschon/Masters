@@ -1,15 +1,18 @@
 import numpy as np
 
 def main():
-    N = 3
+    N = 10
     avgs = 0.5*np.ones(N) # prob of every neuron firing in a window is 0.5
     corrs = 0.2*np.triu(np.ones((N,N)),1) # prob of 2 neurons firing in the same window is 0.2 
+    print("Init model")
     ising = Ising(N, avgs, corrs, lr=0.5) 
+    print("Starting grad ascent")
     ising.gradient_ascent() # 100 steps 
+    print("Stop grad ascent")
     pred_avgs = ising.averages()
     pred_corrs = ising.correlations()
     print("Predicted averages:", pred_avgs, "Predicted correlations:", pred_corrs,sep="\n")
-    
+    print(f"P({ising.states[0]})={ising.p(ising.states[0])}")
 
 class Ising:
     """
@@ -40,39 +43,26 @@ class Ising:
         # work out the partition function Z
         self.Z = self.calc_Z()
     
-    # Methods for calculating probabilities and expectations
-    def expectation(self, f, ind, p):
+    # Methods for calculating probabilities and expectations over entire distribution
+    def expectation(self, f):
         """
-        Returns the sum over all states of the function f, weighted by p. 
+        Returns the sum over all states of the function f, weighted by the probability distirbution produced by the Ising model. 
         Args:
-            f - a function of a subset of the spins
-            ind - indices of the spins which are involved in f
-            p - a function of the state, for instance the probability p of observing the state
+            f - a function of all the states
         """
-        exp = 0
-        for s in self.states:
-            exp += f( [s[i] for i in ind] ) * p(s)
-        
-        return exp
+        return f(self.states).T @ self.p(self.states) 
 
     def averages(self):
         """
         Returns a vector of the expected values <s_i>
         """
-        averages = np.zeros(self.N)
-        for i in range(self.N):
-            averages[i] = self.expectation(lambda s: s[0], [i], self.p)
-        return averages
+        return self.expectation(lambda states: states)
     
     def correlations(self):
         """
         Returns a matrix of the expected values <s_i s_j> where i != j
         """
-        correlations = np.zeros((self.N,self.N))
-        for i in range(self.N):
-            for j in range(i+1,self.N):
-                correlations[i,j] = self.expectation(lambda s: s[0]*s[1], [i,j], self.p)
-        return correlations
+        return np.triu( self.states.T@np.diag(self.p(self.states))@self.states, 1)
 
     def p(self, s):
         """
@@ -92,23 +82,28 @@ class Ising:
 
     def H(self, s):
         """
-        Return the hamiltonian H(s) of the state s
+        Return the hamiltonian H(s) of the state s if s.ndim == 1, 
+        or the hamiltonian over the states s if s.ndim == 2
         Args:
-            s - np.array of the state
+            s - np.array of the state/states
         """
-        return -self.h.dot(s) - s@self.J@s 
+        if s.ndim==1:
+            return -s@self.h - s@self.J@s 
+        
+        return -s@self.h - np.sum(s@self.J*s, axis=1)
             
     def calc_Z(self):
         """ 
         Calculates the partition function Z based on the current h and J.
         """
         # (the lambda function just returns 1 since this is just a sum of p over all states) 
-        Z = self.expectation(lambda args: 1, [], self.p_unnormalized) 
+        Z = np.sum( self.p_unnormalized(self.states) )
         return Z 
     
     def to_binary(self, n):
         """
         Returns a binary rep of the int n as an array of size N, e.g. Assuming N = 5, 3 -> np.array([0,0,0,1,1]) 
+        Not particularly efficient, but since it is only used once at the start, this is alright
         """
         b = np.zeros(self.N)
         for i in range(self.N):
@@ -125,17 +120,10 @@ class Ising:
         steps = 100
         for _ in range(steps): #update this condition to check accuracy
             # work out corrections to h
-            h_new = self.h
-            for i in range(self.N):
-                dLdhi = self.avgs[i] - self.expectation( lambda s: s[0], [i], self.p )
-                h_new[i] += self.lr * dLdhi 
+            h_new = self.h + self.lr*(self.avgs-self.averages())
 
             # work out corrections to J
-            J_new = self.J
-            for i in range(self.N-1):
-                for j in range(i+1,self.N):
-                    dLdJij = self.corrs[i,j] - self.expectation( lambda s: s[0]*s[1], [i,j], self.p )
-                    J_new[i,j] += self.lr * dLdJij 
+            J_new = self.J + self.lr*(self.corrs-self.correlations())
 
             # perform the update
             self.h = h_new
