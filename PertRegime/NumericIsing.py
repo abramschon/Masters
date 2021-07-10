@@ -37,9 +37,10 @@ def main():
     plt.plot(Ns, av_times, "k.")
     plt.plot(Ns, av_times+2*std_times/np.sqrt(reps), "r_")
     plt.plot(Ns, av_times-2*std_times/np.sqrt(reps), "r_")
+    plt.semilogy()
     plt.title("Time for 100 steps of grad. ascent vs. system size")
     plt.xlabel("System size")
-    plt.ylabel("Time (seconds)")
+    plt.ylabel("Log Time (seconds)")
     plt.show()
 
 class Ising:
