@@ -77,7 +77,7 @@ class Ising:
         """
         Returns the sum over all states of the function f, weighted by the probability distirbution produced by the Ising model. 
         Args:
-            f - a function of all the states
+            f - a function of all the states, must return either a column vector (2^N x 1) or a matrix (2^N x N)
         """
         return f(self.states).T @ self.p(self.states) 
 
