@@ -125,9 +125,7 @@ class Ising:
         """ 
         Calculates the partition function Z based on the current h and J.
         """
-        # (the lambda function just returns 1 since this is just a sum of p over all states) 
-        Z = np.sum( self.p_unnormalized(self.states) )
-        return Z 
+        return np.sum( self.p_unnormalized(self.states) )
     
     def to_binary(self, n):
         """

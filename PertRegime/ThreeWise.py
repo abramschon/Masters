@@ -18,7 +18,7 @@ def main():
     for i in range(N-2):
         for j in range(i+1,N-1):
             for k in range(j+1, N):
-                print(f"Correlation between {i},{j},{k}\n",ex.expectation(lambda s: s[0]*s[1]*s[2], [i,j,k], ex.p))
+                print(f"Correlation between {i},{j},{k}\n", ex.expectation(lambda s: s[:,i]*s[:,j]*s[:,k]) )
 
 class ThreeWise:
     """
@@ -44,39 +44,26 @@ class ThreeWise:
         # work out the partition function Z
         self.Z = self.calc_Z()
     
-    # Methods for calculating probabilities and expectations
-    def expectation(self, f, ind, p):
+    # Methods for calculating probabilities and expectations over entire distribution
+    def expectation(self, f):
         """
-        Returns the sum over all states of the function f, weighted by p. 
+        Returns the sum over all states of the function f, weighted by the probability distirbution produced by the Ising model. 
         Args:
-            f - a function of a subset of the spins
-            ind - indices of the spins which are involved in f
-            p - a function of the state, for instance the probability p of observing the state
+            f - a function of all the states, must return either a column vector (2^N x 1) or a matrix (2^N x N)
         """
-        exp = 0
-        for s in self.states:
-            exp += f( [s[i] for i in ind] ) * p(s)
-        
-        return exp
+        return f(self.states).T @ self.p(self.states) 
 
     def averages(self):
         """
         Returns a vector of the expected values <s_i>
         """
-        averages = np.zeros(self.N)
-        for i in range(self.N):
-            averages[i] = self.expectation(lambda s: s[0], [i], self.p)
-        return averages
+        return self.expectation(lambda states: states)
     
     def correlations(self):
         """
         Returns a matrix of the expected values <s_i s_j> where i != j
         """
-        correlations = np.zeros((self.N,self.N))
-        for i in range(self.N):
-            for j in range(i+1,self.N):
-                correlations[i,j] = self.expectation(lambda s: s[0]*s[1], [i,j], self.p)
-        return correlations
+        return np.triu( self.states.T@np.diag(self.p(self.states))@self.states, 1)
 
     def p(self, s):
         """
@@ -96,19 +83,21 @@ class ThreeWise:
 
     def H(self, s):
         """
-        Return the hamiltonian H(s) of the state s
+        Return the hamiltonian H(s) of the state s if s.ndim == 1, 
+        or the hamiltonian over the states s if s.ndim == 2
         Args:
-            s - np.array of the state
+            s - np.array of the state/states
         """
-        return -self.h@s - self.J@s@s - self.K@s@s@s
+        if s.ndim==1:
+            return -self.h@s - self.J@s@s - self.K@s@s@s
+
+        return -s@self.h - np.sum(s@self.J*s, axis=1) - np.einsum("ij,ik,il,jkl->i", s,s,s,self.K)
             
     def calc_Z(self):
         """ 
         Calculates the partition function Z based on the current h and J.
         """
-        # (the lambda function just returns 1 since this is just a sum of p over all states) 
-        Z = self.expectation(lambda args: 1, [], self.p_unnormalized) 
-        return Z 
+        return np.sum( self.p_unnormalized(self.states) )
     
     def to_binary(self, n):
         """
