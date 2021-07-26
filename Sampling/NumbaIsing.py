@@ -4,16 +4,21 @@ import time
 from numba import njit, prange
 
 def main():
-    N = 5
+    av_time_grad_ascent()
+
+def test_samples():
+    N = 10
     avgs = 0.5*np.ones(N) # prob of every neuron firing in a window is 0.5
     corrs = 0.2*np.triu(np.ones((N,N)),1) # prob of 2 neurons firing in the same window is 0.2 
     
     ising = Ising(N, avgs, corrs, lr=0.5) 
     
+    M = 500000
+    chains = 10
     start = time.time()
-    samples = ising.gibbs_sampling(10000,5)
+    samples = ising.gibbs_sampling(M,chains)
     stop = time.time()
-    print("Time", stop-start)
+    print(f"Time to generate {chains}x{M} samples", stop-start)
 
     samples = samples.reshape(-1,N) #collapse different trials 
 
@@ -28,7 +33,6 @@ def main():
     corrs_sample = np.triu((samples.T@samples) / samples.shape[0],k=1)
     print("True correlations", np.round(corrs_true,dp), "Sample correlations", np.round(corrs_sample,dp), sep="\n")
     print("Difference in correlations", corrs_true - corrs_sample, sep="\n")
-
 
 def fit_example():
     N = 5
@@ -72,7 +76,7 @@ def av_time_grad_ascent():
     plt.plot(Ns, av_times-2*std_times/np.sqrt(reps), "r_")
     plt.title("Time for 100 steps of grad. ascent vs. system size")
     plt.xlabel("System size")
-    plt.ylabel("Log Time (seconds)")
+    plt.ylabel("Time (seconds)")
     plt.show()
 
 class Ising:
@@ -188,7 +192,7 @@ class Ising:
         and having to rewrite a bunch of stuff. 
         """
         def H(states,h,J):
-            return states@h + np.sum(states@J*states, axis=1)
+            return states.dot(h) + np.sum(states.dot(J)*states, axis=1)
 
         steps = 500
         for _ in range(steps): #update this condition to check accuracy
@@ -197,11 +201,11 @@ class Ising:
             p_states = np.exp( - H(states, h, J) ) / Z
 
             # work out corrections to h
-            mod_avgs = states.T @ p_states #model averages
+            mod_avgs = states.T.dot(p_states) #model averages
             h_new = h + lr*( mod_avgs - avgs )
 
             # work out corrections to J
-            mod_corrs = np.triu( states.T@np.diag(p_states)@states, 1)
+            mod_corrs = np.triu( states.T.dot(np.diag(p_states)).dot(states), 1)
             J_new = J + lr*( mod_corrs - corrs )
 
             # perform the update 
@@ -220,7 +224,7 @@ class Ising:
         return self.fast_gibbs_sampling(self.h, self.J, self.spin_vals, samples)
 
     @staticmethod
-    @njit(parallel=True)
+    @njit #not sure how much of a difference parallel makes here
     def fast_gibbs_sampling(h, J, spin_vals, samples):
         """
         Given a probability distribution p, returns M samples using gibbs sampling
@@ -237,8 +241,8 @@ class Ising:
                 state_off[i] =  spin_vals[0] #state with neuron i set to off
                 state_on[i] = spin_vals[1] #state with neuron i
                 
-                p_on = np.exp( - state_on@h - state_on@J@state_on )
-                p_on = p_on / (p_on + np.exp( - state_off@h - state_off@J@state_off) )  #calc cond prob that spin i is on given other spin vals
+                p_on = np.exp( - state_on.dot(h) - state_on.dot(J).dot(state_on) )
+                p_on = p_on / (p_on + np.exp( - state_off.dot(h) - state_off.dot(J).dot(state_off) ) ) #calc cond prob that spin i is on given other spin vals
                 
                 if np.random.binomial(1,p_on): #draw number from unif distribution to determine whether we update i
                     samples[c,t]=state_on
