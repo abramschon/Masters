@@ -4,7 +4,21 @@ import time
 from numba import njit, prange
 
 def main():
-    N=50
+    N = 5
+    avgs = 0.05*np.ones(N) # prob of every neuron firing in a window is 0.5
+    corrs = 0.002*np.triu(np.ones((N,N)),1) # prob of 2 neurons firing in the same window is 0.2 
+    print("Init model")
+    ising = NumIsing(N, avgs, corrs, lr=0.5,analytic=True) 
+    ising.pert_init()
+    print(ising.avgs, ising.corrs)
+    
+    pred_avgs = ising.averages(analytic=True)
+    print("Predicted averages:", np.round(pred_avgs,4))
+    pred_corrs = ising.correlations(analytic=True)
+    print("Predicted correlations:", np.round(pred_corrs,4))
+
+def test_MC():
+    N=20
     
     avgs = 0.5*np.ones(N) # prob of every neuron firing in a window is 0.5
     corrs = 0.2*np.triu(np.ones((N,N)),1) # prob of 2 neurons firing in the same window is 0.2 
@@ -12,7 +26,7 @@ def main():
     ising = NumIsing(N, avgs, corrs, lr=0.5) 
     
     print("State space ", 2**N)
-    N_samples=5000; chains=4; N_sets=40; updates_per_set=100; M = N_samples*chains
+    N_samples=1000; chains=4; N_sets=10; updates_per_set=100; M = N_samples*chains
     print(f"{N_sets} sets of {M} samples will be generated, for a total of {N_sets*M} states")
     
     print("Starting gradient ascent with sampling")
@@ -134,6 +148,16 @@ class NumIsing:
         self.states = np.array([self.to_binary(n) for n in range(2**self.N)]) 
         return True
 
+    def pert_init(self):
+        """
+        Initialise weights based on estimates from the perturbative results
+        Div by 0 issue if any average is 0
+        """
+        self.h = np.log( (1/self.avgs) - 1)
+        prod_avgs = np.outer(self.avgs,self.avgs)
+        self.J = -np.log( (self.corrs / prod_avgs) + np.tril( np.ones((self.N,self.N)))  ) 
+        return True
+
     @staticmethod
     @njit
     def H(s, h, J):
@@ -238,7 +262,11 @@ class NumIsing:
                     Ps = np.ones(M) 
                 else:
                     Ps = self.p_unnormalized(samples, h-self.h, J-self.J) # like the likelihood of each state, but based on samples 
+
                 denom = M * np.mean(Ps) 
+                if denom == 0:
+                    print("Divide by zero issue", Ps)
+                    denom = 1e-4 
 
                 mod_avgs = samples.T.dot(Ps) / denom
                 mod_corrs = self.sample_corrs(samples,Ps) / denom
@@ -319,13 +347,13 @@ class NumIsing:
                 state_off[i] =  spin_vals[0] #state with neuron i set to off
                 state_on[i] = spin_vals[1] #state with neuron i
                 
-                p_on = np.exp( - state_on.dot(h) - state_on.dot(J).dot(state_on) )
-                p_on = p_on / (p_on + np.exp( - state_off.dot(h) - state_off.dot(J).dot(state_off) ) ) #calc cond prob that spin i is on given other spin vals
+                p_off = np.exp( - state_off.dot(h) - state_off.dot(J).dot(state_off) )
+                p_off = p_off / (p_off + np.exp( - state_on.dot(h) - state_on.dot(J).dot(state_on) ) ) #calc cond prob that spin i is on given other spin vals
 
-                if np.random.binomial(1,p_on): #draw number from unif distribution to determine whether we update i
-                    samples[c,t]=state_on
+                if np.random.binomial(1,p_off): #draw number from unif distribution to determine whether we update i
+                    samples[c,t]= state_off
                     continue
-                samples[c,t]=state_off
+                samples[c,t]=state_on
 
         return samples
 
