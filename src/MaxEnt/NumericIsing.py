@@ -1,55 +1,13 @@
 import numpy as np
-import matplotlib.pyplot as plt
-import time
-
-def main():
-    N = 5
-    avgs = 0.5*np.ones(N) # prob of every neuron firing in a window is 0.5
-    corrs = 0.2*np.triu(np.ones((N,N)),1) # prob of 2 neurons firing in the same window is 0.2 
-    print("Init model")
-    ising = Ising(N, avgs, corrs, lr=0.5) 
-    print("Starting grad ascent")
-    ising.gradient_ascent() # 100 steps 
-    print("Stop grad ascent")
-    pred_avgs = ising.averages()
-    pred_corrs = ising.correlations()
-    print("Predicted averages:", pred_avgs, "Predicted correlations:", pred_corrs,sep="\n")
-    print(f"P({ising.states[0]})={ising.p(ising.states[0])}")
-
-    # Calculate average times
-    reps = 10
-    Ns = np.arange(1,13)
-    times = np.zeros( (reps,len(Ns)) )
-    for i in range(reps):
-        for N in Ns:
-            print(N)
-            avgs = 0.5*np.ones(N) # prob of every neuron firing in a window is 0.5
-            corrs = 0.2*np.triu(np.ones((N,N)),1) # prob of 2 neurons firing in the same window is 0.2 
-            ising = Ising(N, avgs, corrs, lr=0.5) 
-            start = time.time()
-            ising.gradient_ascent() # 100 steps 
-            stop = time.time()
-            times[i,N-1]=stop-start
-    
-    av_times = np.mean(times,0)
-    std_times = np.std(times,0)
-
-    plt.plot(Ns, av_times, "k.")
-    plt.plot(Ns, av_times+2*std_times/np.sqrt(reps), "r_")
-    plt.plot(Ns, av_times-2*std_times/np.sqrt(reps), "r_")
-    plt.semilogy()
-    plt.title("Time for 100 steps of grad. ascent vs. system size")
-    plt.xlabel("System size")
-    plt.ylabel("Log Time (seconds)")
-    plt.show()
+from numba import njit
 
 class Ising:
     """
     Represents an Ising model.
     Variables:
         N - no. spins
-        av_s - vector of expectations for each spin
-        av_ss - matrix of pairwise correlations
+        avgs - vector of expectations for each spin
+        corrs - matrix of pairwise correlations
         lr - learning rate
         spin_vals - the values each spin takes on, typically [0,1] or [-1,1]
         states - matrix of all possible states
@@ -117,9 +75,9 @@ class Ising:
             s - np.array of the state/states
         """
         if s.ndim==1:
-            return -s@self.h - s@self.J@s 
+            return s@self.h + s@self.J@s 
         
-        return -s@self.h - np.sum(s@self.J*s, axis=1)
+        return s@self.h + np.sum(s@self.J*s, axis=1)
             
     def calc_Z(self):
         """ 
@@ -144,18 +102,37 @@ class Ising:
         """
         Performs gradient ascent on the log-likelihood and updates h and J
         """
-        steps = 100
+        self.h, self.J, self.Z = self.fast_gradient_ascent(self.states,self.h,self.J,self.Z,self.avgs,self.corrs,self.lr)
+        return True
+        
+    @staticmethod
+    @njit
+    def fast_gradient_ascent(states,h,J,Z,avgs,corrs,lr):
+        """
+        Performs gradient ascent but makes use of Numba to hopefully speed this up
+        Unfortunately, Numba does not play nicely with class functions, hence the static method
+        and having to rewrite a bunch of stuff. 
+        """
+        def H(states,h,J):
+            return states@h + np.sum(states@J*states, axis=1)
+
+        steps = 500
         for _ in range(steps): #update this condition to check accuracy
+        
+            # current prob of states
+            p_states = np.exp( - H(states, h, J) ) / Z
+
             # work out corrections to h
-            h_new = self.h + self.lr*(self.avgs-self.averages())
+            mod_avgs = states.T @ p_states #model averages
+            h_new = h + lr*( mod_avgs - avgs )
 
             # work out corrections to J
-            J_new = self.J + self.lr*(self.corrs-self.correlations())
+            mod_corrs = np.triu( states.T@np.diag(p_states)@states, 1)
+            J_new = J + lr*( mod_corrs - corrs )
 
-            # perform the update
-            self.h = h_new
-            self.J = J_new
-            self.Z = self.calc_Z()
-    
-if __name__ == "__main__":
-    main()
+            # perform the update 
+            h = h_new 
+            J = J_new
+            Z = np.sum( np.exp( -H(states, h, J)) ) 
+
+        return h, J, Z

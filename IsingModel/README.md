@@ -8,7 +8,7 @@ We include two Jupyter notebooks:
 
 - `AnalyticIsing.ipynb` -  Implementation of Ising model that analytically solves for `h` and `J`, written in the Wolfram language
 
-- `NumericIsing.ipynb` - Computationally solves for `h` and `J`, written in Python. Currently uses an inefficient maximum likelihood method that sums over all states. 
+- `NumericIsing.ipynb` - Computationally solves for `h` and `J`, written in Python. Currently uses an inefficient maximum likelihood method that sums over all states. See `src/MaxEnt/` folder for implementation
 
 ## Wolfram Language in Jupyter
 We use this [package](https://github.com/WolframResearch/WolframLanguageForJupyter) to allow us to use the Wolfram Language in Jupyter. In short:
