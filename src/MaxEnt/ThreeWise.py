@@ -1,4 +1,5 @@
 import numpy as np
+from .utils import get_state_space
 
 class ThreeWise:
     """
@@ -20,7 +21,7 @@ class ThreeWise:
         self.K = K
         self.spin_vals = spin_vals
         # determine all states
-        self.states = np.array([self.to_binary(n) for n in range(2**N)]) 
+        self.states = get_state_space(N, spin_vals, dtype=np.byte)
         # work out the partition function Z
         self.Z = self.calc_Z()
     
@@ -78,14 +79,3 @@ class ThreeWise:
         Calculates the partition function Z based on the current h and J.
         """
         return np.sum( self.p_unnormalized(self.states) )
-    
-    def to_binary(self, n):
-        """
-        Returns a binary rep of the int n as an array of size N, e.g. Assuming N = 5, 3 -> np.array([0,0,0,1,1]) 
-        """
-        b = np.zeros(self.N)
-        for i in range(self.N):
-            if n % 2 == 1: b[self.N-1-i]=1 # index N-1-i otherwise numbers are reversed
-            n//=2
-            if n==0: break
-        return b

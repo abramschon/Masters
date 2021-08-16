@@ -1,9 +1,10 @@
 import numpy as np
 from numba import njit
+from .utils import get_state_space
 
 class Ising:
     """
-    Represents an Ising model.
+    Represents an Ising model. Only works for N < 10ish.
     Variables:
         N - no. spins
         avgs - vector of expectations for each spin
@@ -23,7 +24,7 @@ class Ising:
         self.lr = lr
         self.spin_vals = spin_vals
         # determine all states
-        self.states = np.array([self.to_binary(n) for n in range(2**N)]) 
+        self.states = get_state_space(N, spin_vals, dtype=np.byte)
         # randomly initialise h and J
         self.h = np.random.random_sample((N))
         self.J = np.triu( np.random.random_sample((N,N)), 1)
@@ -85,17 +86,15 @@ class Ising:
         """
         return np.sum( self.p_unnormalized(self.states) )
     
-    def to_binary(self, n):
+    def pert_init(self):
         """
-        Returns a binary rep of the int n as an array of size N, e.g. Assuming N = 5, 3 -> np.array([0,0,0,1,1]) 
-        Not particularly efficient, but since it is only used once at the start, this is alright
+        Initialise weights based on estimates from the perturbative results
+        Div by 0 issue if any average is 0
         """
-        b = np.zeros(self.N)
-        for i in range(self.N):
-            if n % 2 == 1: b[self.N-1-i]=1 # index N-1-i otherwise numbers are reversed
-            n//=2
-            if n==0: break
-        return b
+        self.h = np.log( (1/self.avgs) - 1)
+        prod_avgs = np.outer(self.avgs,self.avgs)
+        self.J = -np.log( (self.corrs / prod_avgs) + np.tril( np.ones((self.N,self.N)))  ) 
+        return True
 
     # Methods for gradient ascent
     def gradient_ascent(self):
@@ -106,7 +105,7 @@ class Ising:
         return True
         
     @staticmethod
-    @njit
+    # @njit #seems to make little difference here
     def fast_gradient_ascent(states,h,J,Z,avgs,corrs,lr):
         """
         Performs gradient ascent but makes use of Numba to hopefully speed this up

@@ -1,5 +1,6 @@
 import numpy as np
 from numba import njit, prange
+from .utils import get_state_space
 
 class NumIsing:
     """
@@ -39,25 +40,11 @@ class NumIsing:
         if analytic:
             self.set_state_space()
 
-            
-    # Calculating probabilities and expectations over entire distribution analytically
-    def to_binary(self, n):
-        """
-        Returns a binary rep of the int n as an array of size N, e.g. Assuming N = 5, 3 -> np.array([0,0,0,1,1]) 
-        Not particularly efficient, but since it is only used once at the start for small N, this is okay
-        """
-        b = np.zeros(self.N)
-        for i in range(self.N):
-            if n % 2 == 1: b[self.N-1-i]=1 # index N-1-i otherwise numbers are reversed
-            n//=2
-            if n==0: break
-        return b
-
     def set_state_space(self):
         """
         Sets up the state space, but only if analytic expectations are needed
         """
-        self.states = np.array([self.to_binary(n) for n in range(2**self.N)]) 
+        self.states = get_state_space(self.N, self.spin_vals, dtype=None)
         return True
 
     def pert_init(self):
