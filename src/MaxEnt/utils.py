@@ -15,7 +15,7 @@ def to_binary(n, width, spin_vals=[0,1], dtype=np.byte):
         if n==0: break
     return b
 
-def get_state_space(width, spin_vals=[0,1], dtype=np.byte):
+def get_state_space(width, spin_vals=[0,1], dtype=None):
     """
     Sets up the state space, but only if analytic expectations are needed
     """
