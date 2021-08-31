@@ -70,9 +70,9 @@ class ThreeWise:
             s - np.array of the state/states
         """
         if s.ndim==1:
-            return -self.h@s - self.J@s@s - self.K@s@s@s
+            return self.h@s + self.J@s@s + self.K@s@s@s
 
-        return -s@self.h - np.sum(s@self.J*s, axis=1) - np.einsum("ij,ik,il,jkl->i", s,s,s,self.K)
+        return s@self.h + np.sum(s@self.J*s, axis=1) + np.einsum("ij,ik,il,jkl->i", s,s,s,self.K)
             
     def calc_Z(self):
         """ 
