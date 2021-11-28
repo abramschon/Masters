@@ -97,41 +97,32 @@ class Ising:
         return True
 
     # Methods for gradient ascent
-    def gradient_ascent(self):
+    def gradient_ascent(self, max_it = 500):
         """
         Performs gradient ascent on the log-likelihood and updates h and J
         """
-        self.h, self.J, self.Z = self.fast_gradient_ascent(self.states,self.h,self.J,self.Z,self.avgs,self.corrs,self.lr)
+        for _ in range(max_it):
+            self.update_params()
         return True
         
-    @staticmethod
-    # @njit #seems to make little difference here
-    def fast_gradient_ascent(states,h,J,Z,avgs,corrs,lr):
+    def update_params(self):
         """
-        Performs gradient ascent but makes use of Numba to hopefully speed this up
-        Unfortunately, Numba does not play nicely with class functions, hence the static method
-        and having to rewrite a bunch of stuff. 
+        Works out the gradients and updates the parameters
         """
-        def H(states,h,J):
-            return states@h + np.sum(states@J*states, axis=1)
+        # current prob of states
+        p_states = self.p(self.states)
 
-        steps = 500
-        for _ in range(steps): #update this condition to check accuracy
-        
-            # current prob of states
-            p_states = np.exp( - H(states, h, J) ) / Z
+        # work out corrections to h
+        mod_avgs = self.states.T @ p_states #model averages
+        h_new = self.h + self.lr*( mod_avgs - self.avgs )
 
-            # work out corrections to h
-            mod_avgs = states.T @ p_states #model averages
-            h_new = h + lr*( mod_avgs - avgs )
+        # work out corrections to J
+        mod_corrs = np.triu( self.states.T@np.diag(p_states)@self.states, 1)
+        J_new = self.J + self.lr*( mod_corrs - self.corrs )
 
-            # work out corrections to J
-            mod_corrs = np.triu( states.T@np.diag(p_states)@states, 1)
-            J_new = J + lr*( mod_corrs - corrs )
+        # perform the update 
+        self.h = h_new 
+        self.J = J_new
+        self.Z = self.calc_Z()
 
-            # perform the update 
-            h = h_new 
-            J = J_new
-            Z = np.sum( np.exp( -H(states, h, J)) ) 
-
-        return h, J, Z
+        return True

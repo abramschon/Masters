@@ -1,6 +1,7 @@
 import numpy as np
 from numba import njit
 from .utils import get_state_space
+from .Samplers import gibbs_sampling
 
 class KPair:
     """
@@ -18,7 +19,7 @@ class KPair:
         V - vector related to population spike distribution
         Z - the current value of the partition function
     """
-    def __init__(self, N, avgs, corrs, p_k, lr=0.1, spin_vals=[0,1]):
+    def __init__(self, N, avgs, corrs, p_k, lr=0.1, spin_vals=[0,1], sampling=False):
         # set user input
         self.N = N
         self.avgs = avgs
@@ -26,14 +27,16 @@ class KPair:
         self.p_k = p_k
         self.lr = lr
         self.spin_vals = spin_vals
-        # determine all states
-        self.states = get_state_space(N, spin_vals, dtype=np.byte)
         # randomly initialise h and J
         self.h = np.random.random_sample((N))
         self.J = np.triu( np.random.random_sample((N,N)), 1)
         self.V = np.random.random_sample((N+1))
-        # work out the partition function Z
-        self.Z = self.calc_Z()
+        # if not sampling, set up state space
+        self.states = None
+        self.Z = -1 
+        if not sampling:  # determine all states and set up partition function
+            self.states = get_state_space(N, spin_vals, dtype=np.byte)
+            self.Z = self.calc_Z()
     
     # Methods for calculating probabilities and expectations over entire distribution
     def expectation(self, f):
@@ -108,17 +111,27 @@ class KPair:
         self.J = -np.log( (self.corrs / prod_avgs) + np.tril( np.ones((self.N,self.N)))  ) 
         return True
 
+    def get_samples(self, M=100000, chains = 4):
+        h, J, V = self.h, self.J, self.V
+        @njit
+        def p(s):
+            return np.exp(- s.dot(h) - s.dot(J).dot(s) + V[np.sum(s)])
+        init_states = np.array([np.random.binomial(1,self.avgs) for c in range(chains)])
+        return gibbs_sampling(p,init_states,M,avg_every=self.N,burn_in=0)
+        
+
     # Methods for gradient ascent
     def gradient_ascent(self):
         """
         Performs gradient ascent on the log-likelihood and updates h and J
+        If sampling is set to true, then does this with sampling, 
         """
-        self.h, self.J, self.V, self.Z = self.fast_gradient_ascent(self.states,self.h,self.J,self.V,self.Z,self.avgs,self.corrs,self.p_k,self.lr)
+        self.h, self.J, self.V, self.Z = self.brute_gradient_ascent(self.states,self.h,self.J,self.V,self.Z,self.avgs,self.corrs,self.p_k,self.lr)
         return True
         
     @staticmethod
     # @njit #seems to make little difference here
-    def fast_gradient_ascent(states,h,J,V,Z,avgs,corrs,p_k,lr):
+    def brute_gradient_ascent(states,h,J,V,Z,avgs,corrs,p_k,lr):
         """
         Performs gradient ascent but makes use of Numba to hopefully speed this up
         Unfortunately, Numba does not play nicely with class functions, hence the static method
@@ -154,3 +167,13 @@ class KPair:
             Z = np.sum( np.exp( -H(states, h, J, V)) ) 
 
         return h, J, V, Z
+
+    @staticmethod
+    @njit 
+    def sampling_gradient_ascent(h,J,V,avgs,corrs,p_k,lr,):
+        """
+        Performs gradient ascent but makes use of Numba to hopefully speed this up
+        Unfortunately, Numba does not play nicely with class functions, hence the static method
+        and having to rewrite a bunch of stuff. 
+        """
+        pass 
