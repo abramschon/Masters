@@ -23,9 +23,9 @@ subset = train_reps(id_N,:); % select the training data
 % files. We will name the files `shuffle_NN_name_rep`
 
 shuffle = 'stimulus'; % 'stimulus' or 'time'
-name = 'ksync'; % 'indep' 'ksync' 'pairwise' or 'kpairwise'
+name = 'pairwise'; % 'indep' 'ksync' 'pairwise' or 'kpairwise'
 NN = 100;  % 10  40 (70) 100 (130) (160)
-rep = 1; % also use this to set the seed of the random number generator
+rep = 2; % also use this to set the seed of the random number generator
 file_name = "TrainedModels/" + shuffle + "_" + NN + "_" + name + "_" + rep;
 
 % select which neurons activities to train model on
